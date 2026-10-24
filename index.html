@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Central de Jogos</title>
+<meta name="description" content="Jogos de futebol do dia com horário de Brasília, escudos e onde assistir.">
+<style>
+  @import url("assets/fontes/fontes.css");
+  :root {
+    --bg: #0b0f17; --panel: #131a25; --panel-2: #192232; --line: #253045; --text: #e9eef5; --muted: #95a3b6;
+    --bola: #22c55e; --bola-esc: #0f2a1a; --tela: #a78bfa; --tela-esc: #1f1838; --link: #7cc4ff; --erro: #f87171; --warn: #f59e0b; --vivo: #ef4444;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 "Inter", "Segoe UI", system-ui, Arial, sans-serif; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 56px; }
+  .oswald { font-family: "Oswald", "Arial Narrow", sans-serif; }
+  header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+  h1 { margin: 0; font: 700 clamp(2rem, 7vw, 2.8rem)/1 "Oswald", sans-serif; text-transform: uppercase; letter-spacing: .01em; }
+  .ola { margin: 6px 0 0; color: var(--muted); }
+  .relogio { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; text-align: right; }
+  .relogio .rot { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .relogio .data { font-weight: 700; } .relogio .hora { font: 700 1.5rem/1.1 "Oswald", sans-serif; font-variant-numeric: tabular-nums; }
+  .modo { margin: 16px 0 0; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); font-size: .92rem; }
+  .modo.on { border-color: #1f6f3f; background: #0f2418; } .modo.off { border-color: #7a5a12; background: #2a2110; }
+  .modo code { background: rgba(255,255,255,.08); padding: 1px 6px; border-radius: 6px; }
+  section { margin-top: 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+  h2 { margin: 0 0 4px; font-size: 1.1rem; } .bola h2 { color: var(--bola); } .tela h2 { color: var(--tela); }
+  .dica { margin: 0 0 14px; color: var(--muted); font-size: .9rem; }
+  .campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: .88rem; color: var(--muted); }
+  input, textarea { font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-height: 44px; width: 100%; }
+  input:focus, textarea:focus, button:focus-visible, a:focus-visible { outline: 2px solid var(--link); outline-offset: 1px; }
+  input[type="date"] { color-scheme: dark; }
+  .botoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 14px; }
+  .botao { display: flex; align-items: center; gap: 10px; text-align: left; cursor: pointer; font: inherit; font-weight: 650; color: var(--text);
+    border-radius: 12px; padding: 12px 14px; min-height: 56px; border: 1px solid var(--line); transition: transform .08s, background .15s; }
+  .botao:active { transform: scale(.98); } .botao:disabled { opacity: .5; cursor: wait; }
+  .botao .ico { font-size: 1.35rem; line-height: 1; }
+  .bola .botao { background: var(--bola-esc); border-color: #1f5f39; } .bola .botao:hover:not(:disabled) { background: #143a24; }
+  .bola .botao.principal { background: linear-gradient(135deg, #16a34a, #15803d); border-color: #22c55e; font-size: 1.05rem; }
+  .tela .botao { background: var(--tela-esc); border-color: #43357a; } .tela .botao:hover { background: #2a2050; }
+  .outro .botao { background: var(--panel-2); }
+  .erro { color: var(--erro); font-size: .92rem; min-height: 1.3em; margin: 10px 0 0; }
+
+  /* ---------- Resultado ---------- */
+  #resultado[hidden], .progresso[hidden] { display: none; }
+  .res-topo { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px; }
+  .res-topo h2 { font: 700 1.9rem/1 "Oswald", sans-serif; text-transform: uppercase; color: var(--text); margin: 0; }
+  .res-sub { color: var(--muted); font-size: .9rem; margin-top: 4px; }
+  .progresso { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 12px; background: var(--panel-2); margin-top: 12px; }
+  .spin { width: 22px; height: 22px; border: 3px solid rgba(255,255,255,.2); border-top-color: var(--bola); border-radius: 50%; animation: g .8s linear infinite; flex: none; }
+  @keyframes g { to { transform: rotate(360deg); } }
+  .ferramentas { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; align-items: center; }
+  .ferramentas input { flex: 1 1 220px; min-height: 40px; }
+  .seg { display: inline-flex; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+  .seg button { font: inherit; font-size: .85rem; font-weight: 600; color: var(--muted); background: none; border: 0; border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: #2a3a55; color: var(--text); }
+  .aviso { margin: 12px 0 0; padding: 10px 14px; border-left: 4px solid var(--warn); background: #2a2110; border-radius: 8px; font-size: .9rem; }
+
+  .grupo { margin-top: 18px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #0f151f; }
+  .grupo-topo { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: linear-gradient(90deg, #17233a, #121a27); border-bottom: 1px solid var(--line); }
+  .liga-logo { width: 34px; height: 34px; border-radius: 8px; background: #fff; display: grid; place-items: center; padding: 4px; flex: none; }
+  .liga-logo img { max-width: 100%; max-height: 100%; }
+  .grupo-nome { font: 700 1.15rem/1.1 "Oswald", sans-serif; text-transform: uppercase; letter-spacing: .03em; }
+  .grupo-qtd { margin-left: auto; color: var(--muted); font-size: .82rem; }
+
+  .jogo { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; grid-template-areas: "hora times canais"; gap: 6px 16px; align-items: center;
+    padding: 12px 14px; border-top: 1px solid #1c2636; }
+  .grupo .jogo:first-of-type { border-top: 0; }
+  .jogo.encerrado { opacity: .62; }
+  .hora { grid-area: hora; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+  .hora .h { font: 700 1.75rem/1 "Oswald", sans-serif; font-variant-numeric: tabular-nums; }
+  .selo { font-size: .68rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 99px; }
+  .selo.vivo { background: var(--vivo); color: #fff; animation: pisca 1.6s ease-in-out infinite; }
+  .selo.fim { background: #334155; color: #cbd5e1; }
+  @keyframes pisca { 50% { opacity: .55; } }
+  .times { grid-area: times; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .time { display: flex; align-items: center; gap: 10px; min-width: 0; font-weight: 700; font-size: 1.02rem; }
+  .time .nome { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+  .time .gols { font: 700 1.1rem "Oswald", sans-serif; min-width: 18px; text-align: right; }
+  .esc { width: 30px; height: 30px; object-fit: contain; flex: none; filter: drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
+  .esc-txt { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; flex: none; font: 700 .62rem "Oswald", sans-serif;
+    background: rgba(255,255,255,.08); border: 2px solid rgba(255,255,255,.5); }
+  .canais { grid-area: canais; display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; max-width: 330px; }
+  .canal { height: 34px; min-width: 76px; padding: 5px 10px; border-radius: 8px; background: #fff; display: inline-flex; align-items: center; justify-content: center;
+    gap: 5px; color: #0b1220; font-weight: 800; font-size: .78rem; position: relative; overflow: hidden; }
+  .canal img { height: 100%; max-width: 86px; object-fit: contain; }
+  .canal img.zoom { transform: scale(1.45); }
+  .canal .n { font: 700 .8rem "Oswald", sans-serif; background: #0b1220; color: #fff; border-radius: 99px; padding: 0 6px; line-height: 1.4; }
+  .nc { font-size: .78rem; font-weight: 700; color: #fcd58a; border: 1px dashed #7a5a12; background: #2a2110; border-radius: 8px; padding: 6px 10px; }
+  .obs { grid-column: 2 / -1; font-size: .78rem; color: var(--muted); }
+  .obs.div { color: #fca5a5; }
+  @media (max-width: 640px) {
+    .jogo { grid-template-columns: 70px minmax(0, 1fr); grid-template-areas: "hora times" "canais canais"; }
+    .hora .h { font-size: 1.45rem; }
+    .canais { justify-content: flex-start; max-width: none; padding-left: 86px; }
+    .obs { grid-column: 1 / -1; padding-left: 86px; }
+    .relogio { text-align: left; width: 100%; } section { padding: 14px; }
+  }
+  .fontes { margin-top: 16px; font-size: .82rem; color: var(--muted); }
+  .fontes a { color: var(--link); }
+
+  /* Pedido para copiar */
+  #pedido { min-height: 140px; resize: vertical; }
+  .copiar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 12px; }
+  #copiar { font: inherit; font-weight: 700; cursor: pointer; border: 0; border-radius: 12px; padding: 12px 22px; min-height: 48px; background: var(--link); color: #06121f; }
+  #copiar:disabled { opacity: .45; cursor: not-allowed; } #copiar.ok { background: var(--bola); }
+  #status { font-weight: 600; color: var(--bola); } #status.falha { color: var(--erro); }
+  footer { margin-top: 28px; color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><h1>Central de Jogos</h1><p class="ola">Veja onde passa cada jogo do dia.</p></div>
+    <div class="relogio" aria-live="polite">
+      <div class="rot">Agora em Brasília</div>
+      <div class="data" id="data-brasilia">—</div>
+      <div class="hora" id="hora-brasilia">—</div>
+    </div>
+  </header>
+
+  <div class="modo" id="modo">Verificando a busca automática…</div>
+
+  <section class="bola">
+    <h2>⚽ Futebol</h2>
+    <p class="dica">Todos os jogos do dia (inclusive os da noite), horário de Brasília e onde assistir.</p>
+    <div class="campos">
+      <label>Data <input id="data" type="date"></label>
+      <label>Time ou campeonato <input id="time" type="text" placeholder="ex.: Vasco  ou  Premier League" autocomplete="off"></label>
+    </div>
+    <div class="botoes">
+      <button class="botao principal" type="button" data-acao="hoje"><span class="ico">📅</span>Jogos de hoje</button>
+      <button class="botao" type="button" data-acao="data"><span class="ico">🗓️</span>Jogos de uma data</button>
+      <button class="botao" type="button" data-acao="time"><span class="ico">🛡️</span>Jogos de um time ou campeonato</button>
+    </div>
+    <p class="erro" id="erro-futebol" role="alert"></p>
+  </section>
+
+  <section id="resultado" hidden aria-live="polite">
+    <div class="res-topo">
+      <div><h2 id="res-titulo">Jogos de hoje</h2><div class="res-sub" id="res-sub"></div></div>
+    </div>
+    <div class="progresso" id="progresso"><div class="spin"></div><span id="prog-msg">Buscando…</span></div>
+    <div id="avisos"></div>
+    <div class="ferramentas" id="ferramentas" hidden>
+      <input id="filtro" type="search" placeholder="Filtrar por time, campeonato ou canal…" aria-label="Filtrar jogos">
+      <div class="seg" role="group" aria-label="Organizar">
+        <button type="button" data-ordem="campeonato" aria-pressed="true">Por campeonato</button>
+        <button type="button" data-ordem="horario" aria-pressed="false">Por horário</button>
+      </div>
+    </div>
+    <div id="lista"></div>
+    <div class="fontes" id="fontes"></div>
+  </section>
+
+  <section class="tela">
+    <h2>🎬 Filmes e séries</h2>
+    <p class="dica">Estes pedidos precisam do Claude Code para pesquisar: a página monta o texto, você copia e cola no chat.</p>
+    <div class="campos">
+      <label>Gênero <input id="genero" type="text" placeholder="ex.: suspense, comédia" autocomplete="off"></label>
+      <label>Plataforma <input id="plataforma" type="text" placeholder="ex.: Netflix" autocomplete="off"></label>
+      <label>Título <input id="titulo" type="text" placeholder="nome do filme ou série" autocomplete="off"></label>
+    </div>
+    <div class="botoes">
+      <button class="botao" type="button" data-copiar="filme"><span class="ico">🎞️</span>Recomendar um filme</button>
+      <button class="botao" type="button" data-copiar="serie"><span class="ico">📺</span>Recomendar uma série</button>
+      <button class="botao" type="button" data-copiar="banner-titulo"><span class="ico">🎨</span>Criar banner de filme ou série</button>
+    </div>
+  </section>
+
+  <section class="outro">
+    <h2>✍️ Outro pedido</h2>
+    <label>Escreva o que você quer <textarea id="livre" rows="2" placeholder="ex.: crie o banner de Vasco x Flamengo"></textarea></label>
+    <div class="botoes"><button class="botao" type="button" data-copiar="outro"><span class="ico">💬</span>Fazer outro pedido</button></div>
+    <p class="erro" id="erro-copiar" role="alert"></p>
+    <label style="margin-top:14px">Pedido para colar no Claude Code <textarea id="pedido" placeholder="Os botões de filmes, séries e outro pedido montam o texto aqui."></textarea></label>
+    <div class="copiar"><button id="copiar" type="button" disabled>Copiar pedido</button><span id="status" role="status" aria-live="polite"></span></div>
+  </section>
+
+  <footer>Nada é salvo no computador ao consultar os jogos. Nenhuma chave, senha ou token fica nesta página.</footer>
+</div>
+
+<script>
+(function () {
+  const FUSO = 'America/Sao_Paulo';
+  const SERVIDOR = 'http://127.0.0.1:8765';
+  // Endereço do site online (GitHub Pages). Usado quando esta página é aberta como arquivo (ex.: pelo WhatsApp).
+  const SITE_ONLINE = 'https://micaelmushura-hobby.github.io/central-de-jogos/';
+  const $ = id => document.getElementById(id);
+  const val = id => $(id).value.trim();
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const semAcento = s => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+  // ---------- Data de Brasília ----------
+  function partes(d) {
+    const p = {};
+    new Intl.DateTimeFormat('en-CA', { timeZone: FUSO, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+      .formatToParts(d).forEach(x => { p[x.type] = x.value; });
+    return p;
+  }
+  const hojeISO = () => { const p = partes(new Date()); return `${p.year}-${p.month}-${p.day}`; };
+  const isoBR = iso => iso.split('-').reverse().join('/');
+  const extenso = iso => { const [a, m, d] = iso.split('-').map(Number); return new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(a, m - 1, d, 12))); };
+  function relogio() {
+    const agora = new Date(), p = partes(agora);
+    $('data-brasilia').textContent = new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(agora);
+    $('hora-brasilia').textContent = `${p.hour}:${p.minute}`;
+  }
+  relogio(); setInterval(relogio, 15000);
+  $('data').value = hojeISO();
+
+  // ---------- Modos ----------
+  // 'local': programa no computador (busca na hora) · 'online': site com dados atualizados a cada 30 min · null: copiar e colar
+  let automatico = false, modo = null, BASE = '', indice = null;
+  const ehLocal = location.protocol.startsWith('http') && location.port === '8765';
+  const urlRecurso = u => !u ? u : /^(https?:|data:)/.test(u) ? u : BASE + u.replace(/^\//, '');
+  async function lerIndice(base) {
+    try { const r = await fetch(base + 'dados/indice.json', { cache: 'no-store' }); if (r.ok) return await r.json(); } catch {}
+    return null;
+  }
+  async function verificarServidor() {
+    if (ehLocal) {
+      try { const r = await fetch('/api/status', { cache: 'no-store' }); if (r.ok && (await r.json()).ok) modo = 'local'; } catch {}
+    } else if (location.protocol.startsWith('http')) {
+      if ((indice = await lerIndice(''))) { modo = 'online'; BASE = ''; }
+    } else {
+      try {
+        const r = await fetch(SERVIDOR + '/api/status', { cache: 'no-store' });
+        if (r.ok && (await r.json()).ok) { location.replace(SERVIDOR + '/'); return; }
+      } catch {}
+      if (SITE_ONLINE && (indice = await lerIndice(SITE_ONLINE))) { modo = 'online'; BASE = SITE_ONLINE; }
+    }
+    automatico = !!modo;
+    const m = $('modo');
+    if (modo === 'local') {
+      m.className = 'modo on';
+      m.innerHTML = '● <strong>Busca automática ligada.</strong> Clique em <strong>Jogos de hoje</strong> e veja onde passa cada jogo.';
+    } else if (modo === 'online') {
+      m.className = 'modo on';
+      m.innerHTML = `● <strong>Dados atualizados às ${esc(indice.geradoEm.split(' ')[1])}</strong> (${esc(indice.geradoEm.split(' ')[0])}). Atualizam sozinhos a cada 30 minutos; o placar ao vivo atualiza a cada minuto.`;
+    } else {
+      m.className = 'modo off';
+      m.innerHTML = '<strong>Sem conexão com os dados dos jogos.</strong> '
+        + (SITE_ONLINE ? `Verifique a internet ou abra o site: <a href="${esc(SITE_ONLINE)}" style="color:var(--link)">${esc(SITE_ONLINE)}</a>. ` : '')
+        + 'No computador, use o atalho <code>Abrir Central de Jogos.bat</code>. Enquanto isso, os botões montam um pedido para copiar e colar no Claude Code.';
+    }
+  }
+  verificarServidor();
+
+  // ---------- Futebol ----------
+  const botoesFutebol = [...document.querySelectorAll('[data-acao]')];
+  let dados = null, ordem = 'campeonato', timerProg;
+  const horaTxt = h => h.replace(':', 'h').replace(/h00$/, 'h');
+  const ZOOM = new Set(['record']);
+
+  function escudo(t) {
+    return t.logo ? `<img class="esc" src="${esc(urlRecurso(t.logo))}" alt="" loading="lazy">` : `<span class="esc-txt">${esc(t.sigla)}</span>`;
+  }
+  function canalHTML(c) {
+    const n = (c.nome.match(/(\d)\s*$/) || [])[1];
+    if (!c.logo) return `<span class="canal" title="${esc(c.nome)}">${esc(c.nome)}</span>`;
+    return `<span class="canal" title="${esc(c.nome)}"><img src="${esc(urlRecurso(c.logo))}" alt="${esc(c.nome)}"${ZOOM.has(c.chave) ? ' class="zoom"' : ''}>${n ? `<span class="n">${n}</span>` : ''}</span>`;
+  }
+  function linhaJogo(j, mostrarCamp) {
+    const vivo = j.estado === 'in', fim = j.estado === 'post';
+    const placar = (vivo || fim) && j.mandante.gols != null;
+    const selo = vivo ? `<span class="selo vivo">Ao vivo${j.situacao ? ' · ' + esc(j.situacao) : ''}</span>` : fim ? '<span class="selo fim">Encerrado</span>' : '';
+    const canais = j.canais.length ? j.canais.map(canalHTML).join('') : '<span class="nc">Transmissão não confirmada</span>';
+    const busca = semAcento([j.campeonato, j.mandante.nome, j.visitante.nome, ...j.canais.map(c => c.nome)].join(' '));
+    return `<div class="jogo${fim ? ' encerrado' : ''}" data-busca="${esc(busca)}">
+      <div class="hora"><span class="h">${esc(horaTxt(j.hora))}</span>${selo}</div>
+      <div class="times">
+        ${mostrarCamp ? `<div class="obs" style="grid-column:auto;padding:0">${esc(j.campeonato)}</div>` : ''}
+        <div class="time">${escudo(j.mandante)}<span class="nome">${esc(j.mandante.nome)}</span>${placar ? `<span class="gols">${esc(j.mandante.gols)}</span>` : ''}</div>
+        <div class="time">${escudo(j.visitante)}<span class="nome">${esc(j.visitante.nome)}</span>${placar ? `<span class="gols">${esc(j.visitante.gols)}</span>` : ''}</div>
+      </div>
+      <div class="canais">${canais}</div>
+      ${j.divergencias.map(d => `<div class="obs div">⚠ Divergência — ${esc(d)}</div>`).join('')}
+    </div>`;
+  }
+  function grupoHTML(titulo, logo, jogos, mostrarCamp) {
+    return `<div class="grupo" data-grupo>
+      <div class="grupo-topo">${logo ? `<span class="liga-logo"><img src="${esc(urlRecurso(logo))}" alt=""></span>` : ''}
+        <span class="grupo-nome">${esc(titulo)}</span><span class="grupo-qtd" data-qtd>${jogos.length} jogo${jogos.length > 1 ? 's' : ''}</span></div>
+      ${jogos.map(j => linhaJogo(j, mostrarCamp)).join('')}
+    </div>`;
+  }
+  function desenhar() {
+    if (!dados) return;
+    const jogos = dados.jogos;
+    let html = '';
+    if (ordem === 'campeonato') {
+      const grupos = new Map();
+      jogos.forEach(j => { if (!grupos.has(j.campeonato)) grupos.set(j.campeonato, []); grupos.get(j.campeonato).push(j); });
+      for (const [nome, lista] of grupos) html += grupoHTML(nome, lista.find(j => j.ligaLogo)?.ligaLogo, [...lista].sort((a, b) => a.hora.localeCompare(b.hora)), false);
+    } else {
+      const porHora = [...jogos].sort((a, b) => a.hora.localeCompare(b.hora) || a.prioridade - b.prioridade);
+      const turnos = [['Manhã', '00:00', '12:00'], ['Tarde', '12:00', '18:00'], ['Noite', '18:00', '24:00']];
+      for (const [nome, ini, fim] of turnos) {
+        const lista = porHora.filter(j => j.hora >= ini && j.hora < fim);
+        if (lista.length) html += grupoHTML(nome, null, lista, true);
+      }
+    }
+    $('lista').innerHTML = html || '<p class="aviso">Nenhum jogo encontrado.</p>';
+    filtrar();
+  }
+  function filtrar() {
+    const t = semAcento(val('filtro'));
+    document.querySelectorAll('[data-grupo]').forEach(g => {
+      let n = 0;
+      g.querySelectorAll('.jogo').forEach(l => { const ok = !t || l.dataset.busca.includes(t); l.hidden = !ok; if (ok) n++; });
+      g.hidden = n === 0;
+      g.querySelector('[data-qtd]').textContent = `${n} jogo${n === 1 ? '' : 's'}`;
+    });
+  }
+  $('filtro').addEventListener('input', filtrar);
+  document.querySelectorAll('[data-ordem]').forEach(b => b.addEventListener('click', () => {
+    ordem = b.dataset.ordem;
+    document.querySelectorAll('[data-ordem]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    desenhar();
+  }));
+
+  async function buscarLocal(p) {
+    const r = await fetch('/api/jogos?' + p.toString());
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.erro || 'Falha na busca.');
+    return d;
+  }
+  // Site online: os dados já foram buscados pelo GitHub (CBF, ESPN e guias de TV); aqui só lê o arquivo do dia.
+  async function buscarOnline(p) {
+    const iso = p.get('data');
+    progresso('Carregando os jogos…');
+    const r = await fetch(`${BASE}dados/${iso}.json`, { cache: 'no-store' });
+    if (!r.ok) {
+      const lista = (indice?.datas || []).map(isoBR).join(' e ');
+      throw new Error(`Ainda não há dados de ${isoBR(iso)}. O site guarda os jogos de hoje e de amanhã${lista ? ` (disponíveis: ${lista})` : ''}.`);
+    }
+    const d = await r.json();
+    if (p.get('modo') === 'time') {
+      const t = semAcento(p.get('filtro'));
+      d.jogos = d.jogos.filter(j => [j.campeonato, j.mandante.nome, j.visitante.nome, j.mandante.nomeCompleto, j.visitante.nomeCompleto]
+        .some(n => semAcento(n).includes(t)));
+    }
+    return d;
+  }
+
+  // Placar e situação ao vivo direto da ESPN (o navegador do celular pode consultar a ESPN).
+  async function atualizarAoVivo() {
+    if (!dados || !dados.jogos.some(j => j.espnId)) return;
+    const somar = (iso, n) => { const [a, m, d] = iso.split('-').map(Number); return new Date(Date.UTC(a, m - 1, d + n, 12)).toISOString().slice(0, 10); };
+    const eventos = new Map();
+    await Promise.all([dados.data, somar(dados.data, 1)].map(async iso => {
+      try {
+        const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/all/scoreboard?dates=${iso.replace(/-/g, '')}&limit=1000&lang=pt&region=br`, { cache: 'no-store' });
+        (await r.json()).events.forEach(e => eventos.set(e.id, e));
+      } catch {}
+    }));
+    let mudou = false;
+    for (const j of dados.jogos) {
+      const e = eventos.get(j.espnId);
+      if (!e) continue;
+      const comps = e.competitions?.[0]?.competitors || [];
+      const gol = t => comps.find(c => c.team?.id === t.espnId)?.score ?? t.gols;
+      const estado = e.status?.type?.state, situacao = e.status?.type?.shortDetail || null;
+      const gm = gol(j.mandante), gv = gol(j.visitante);
+      if (estado !== j.estado || situacao !== j.situacao || gm !== j.mandante.gols || gv !== j.visitante.gols) {
+        Object.assign(j, { estado, situacao }); j.mandante.gols = gm; j.visitante.gols = gv; mudou = true;
+      }
+    }
+    if (mudou) desenhar();
+  }
+  setInterval(() => { if (document.visibilityState === 'visible') atualizarAoVivo(); }, 60000);
+
+  function progresso(msg) { $('progresso').hidden = !msg; $('prog-msg').textContent = msg || ''; }
+  function erro(msg, foco) { $('erro-futebol').textContent = msg; $(foco).focus(); }
+
+  async function executar(acao) {
+    $('erro-futebol').textContent = '';
+    const p = new URLSearchParams();
+    if (acao === 'hoje') { p.set('modo', 'dia'); p.set('data', hojeISO()); $('data').value = hojeISO(); }
+    if (acao === 'data') { if (!val('data')) return erro('Escolha a data.', 'data'); p.set('modo', 'dia'); p.set('data', val('data')); }
+    if (acao === 'time') { if (!val('time')) return erro('Escreva um time ou campeonato.', 'time'); p.set('modo', 'time'); p.set('filtro', val('time')); p.set('data', val('data') || hojeISO()); }
+    if (!automatico) return pedidoCopiaFutebol(acao);
+
+    botoesFutebol.forEach(b => { b.disabled = true; });
+    $('resultado').hidden = false;
+    $('res-titulo').textContent = acao === 'time' ? val('time') : (p.get('data') === hojeISO() ? 'Jogos de hoje' : 'Jogos do dia');
+    $('res-sub').textContent = extenso(p.get('data'));
+    $('lista').innerHTML = $('avisos').innerHTML = $('fontes').innerHTML = '';
+    $('ferramentas').hidden = true;
+    progresso('Buscando jogos, horários e transmissões…');
+    $('resultado').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    clearInterval(timerProg);
+    if (modo === 'local') timerProg = setInterval(async () => {
+      try { const r = await (await fetch('/api/progresso', { cache: 'no-store' })).json(); if (r.msg) progresso(r.msg); } catch {}
+    }, 700);
+    try {
+      const d = modo === 'local' ? await buscarLocal(p) : await buscarOnline(p);
+      dados = d;
+      $('res-sub').textContent = `${extenso(d.data)} · ${d.jogos.length} jogo${d.jogos.length === 1 ? '' : 's'} · horários de Brasília · consulta às ${d.consultadoEm.split(' ')[1]}`;
+      $('avisos').innerHTML = d.avisos.map(a => `<p class="aviso">${esc(a)}</p>`).join('')
+        + d.fontes.filter(f => !f.ok && !(d.avisos.length && f.nome.startsWith('Olhar'))).map(f => `<p class="aviso">Fonte indisponível: ${esc(f.nome)} — ${esc(f.obs)}</p>`).join('');
+      $('ferramentas').hidden = !d.jogos.length;
+      $('filtro').value = '';
+      desenhar();
+      atualizarAoVivo();
+      $('fontes').innerHTML = 'Fontes: ' + d.fontes.map(f => `<a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.nome.split(' — ')[0])}</a>${f.ok ? '' : ' (indisponível)'}`).join(' · ')
+        + '. Horários das Séries A e B conferidos na tabela oficial da CBF; canais segundo o guia do dia.';
+    } catch (e) {
+      $('res-titulo').textContent = 'Não foi possível concluir';
+      $('avisos').innerHTML = `<p class="aviso">${esc(e.message)}</p>`;
+      if (e instanceof TypeError) { automatico = false; verificarServidor(); }
+    } finally {
+      clearInterval(timerProg);
+      progresso('');
+      botoesFutebol.forEach(b => { b.disabled = false; });
+    }
+  }
+  botoesFutebol.forEach(b => b.addEventListener('click', () => executar(b.dataset.acao)));
+
+  // ---------- Pedidos para copiar ----------
+  const SKILL = '/futebol-filmes-series';
+  function mostrarPedido(texto) {
+    $('pedido').value = `${SKILL} ${texto}`;
+    $('copiar').disabled = false; $('copiar').classList.remove('ok'); $('copiar').textContent = 'Copiar pedido'; $('status').textContent = '';
+    $('pedido').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  function pedidoCopiaFutebol(acao) {
+    const fuso = `Use o horário de Brasília (America/Sao_Paulo); pela página, hoje é ${isoBR(hojeISO())}.`;
+    const base = 'Pesquise na web agora e liste campeonato, times, horário de Brasília e canal de TV ou streaming; marque "transmissão não confirmada" quando faltar confirmação.';
+    mostrarPedido({
+      hoje: `Quais jogos de futebol passam hoje? ${fuso} ${base}`,
+      data: `Quais jogos de futebol acontecem em ${isoBR(val('data'))}? ${fuso} ${base}`,
+      time: `Quais são os próximos jogos de ${val('time')}? ${fuso} ${base}`
+    }[acao]);
+  }
+  const filtrosTela = () => [val('genero') && `Gênero/clima: ${val('genero')}`, val('plataforma') && `Plataformas: ${val('plataforma')}`].filter(Boolean);
+  const NOTA = 'Verifique agora se cada título está disponível no Brasil e em qual serviço, com a data da consulta e os links. Explique sem spoilers por que vale a pena.';
+  const PEDIDOS = {
+    filme: () => `Recomende filmes para eu assistir.${filtrosTela().length ? '\n- ' + filtrosTela().join('\n- ') : ' Traga opções variadas.'}\n${NOTA}`,
+    serie: () => `Recomende séries para eu assistir.${filtrosTela().length ? '\n- ' + filtrosTela().join('\n- ') : ' Traga opções variadas.'}\n${NOTA}`,
+    'banner-titulo': () => val('titulo') ? `Crie um banner de capa 9:16 para "${val('titulo')}". Confira gênero, ano e onde está disponível no Brasil, com links.` : null,
+    outro: () => val('livre') ? `${val('livre')}\nUse o horário de Brasília (America/Sao_Paulo) se envolver futebol e cite as fontes.` : null
+  };
+  document.querySelectorAll('[data-copiar]').forEach(b => b.addEventListener('click', () => {
+    $('erro-copiar').textContent = '';
+    const t = PEDIDOS[b.dataset.copiar]();
+    if (!t) { const outro = b.dataset.copiar === 'outro'; $('erro-copiar').textContent = outro ? 'Escreva seu pedido no campo acima.' : 'Escreva o nome do filme ou série no campo "Título".'; $(outro ? 'livre' : 'titulo').focus(); return; }
+    mostrarPedido(t);
+  }));
+  $('pedido').addEventListener('input', () => { $('copiar').disabled = !$('pedido').value.trim(); });
+  let timerCopia;
+  $('copiar').addEventListener('click', async () => {
+    const texto = $('pedido').value;
+    let ok = false;
+    if (navigator.clipboard && window.isSecureContext) { try { await navigator.clipboard.writeText(texto); ok = true; } catch {} }
+    if (!ok) { $('pedido').select(); try { ok = document.execCommand('copy'); } catch {} }
+    $('status').classList.toggle('falha', !ok);
+    $('status').textContent = ok ? '✓ Copiado! Cole no chat do Claude Code.' : 'Não consegui copiar. Selecione o texto e use Ctrl+C.';
+    $('copiar').classList.toggle('ok', ok); $('copiar').textContent = ok ? '✓ Copiado' : 'Copiar pedido';
+    clearTimeout(timerCopia); timerCopia = setTimeout(() => { $('copiar').classList.remove('ok'); $('copiar').textContent = 'Copiar pedido'; }, 4000);
+  });
+})();
+</script>
+</body>
+</html>

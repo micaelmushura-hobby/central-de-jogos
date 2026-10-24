@@ -1,0 +1,10 @@
+# Não publicar: dados pessoais, resultados e arquivos gerados no computador
+dados/
+saidas/
+.claude/
+_site/
+assets/fotos/
+assets/fundos/
+assets/logos/times/
+assets/logos/ligas/
+node_modules/
