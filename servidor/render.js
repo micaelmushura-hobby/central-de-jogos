@@ -110,10 +110,18 @@ async function capturarPNG(url, largura, altura, destino) {
 }
 
 // Texto visível de uma página que monta o conteúdo com JavaScript (ex.: tabela da CBF).
-async function textoRenderizado(url, esperaMs = 6000) {
+// Com "contem", espera até esse texto aparecer (ou até esperaMs), em vez de um tempo fixo.
+async function textoRenderizado(url, esperaMs = 6000, contem = null) {
   return comAba(1280, 900, async sessao => {
-    await navegar(sessao, url, esperaMs);
-    return sessao.avaliar('document.body ? document.body.innerText : ""');
+    await navegar(sessao, url, contem ? 0 : esperaMs);
+    const ler = () => sessao.avaliar('document.body ? document.body.innerText : ""');
+    let texto = await ler();
+    for (const fim = Date.now() + esperaMs; contem && !texto.includes(contem) && Date.now() < fim;) {
+      await esperar(500);
+      texto = await ler();
+    }
+    if (contem) await esperar(800); // deixa terminar de montar a lista daquela data
+    return contem ? await ler() : texto;
   });
 }
 

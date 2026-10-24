@@ -145,8 +145,8 @@ async function lerCBF(iso, serie) {
   const ano = iso.slice(0, 4);
   const url = `https://www.cbf.com.br/futebol-brasileiro/tabelas/campeonato-brasileiro/serie-${serie}/${ano}`;
   try {
-    const texto = (await render.textoRenderizado(url, 7000)).replace(/\s+/g, ' ');
     const alvo = U.isoParaBR(iso);
+    const texto = (await render.textoRenderizado(url, 25000, alvo)).replace(/\s+/g, ' ');
     const jogos = [];
     const re = /([A-Za-zÀ-ú]{3}) (?:\d+ )?X (?:\d+ )?([A-Za-zÀ-ú]{3}) Jogo (\d+) (?:(\d+) Altera\S* )?(\d{2}\/\d{2}\/\d{4}) - (\d{2}:\d{2}) (.+?) Documentos do jogo/gi;
     let m;
